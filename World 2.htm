@@ -1,0 +1,757 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Strategic Diaspora Intelligence Map — Telugu Hotspots (USA / Canada / Europe)</title>
+
+  <!-- Futuristic title font (Orbitron); subtitle stays Helvetica -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    /* Helvetica everywhere by default */
+    html, body, #map,
+    .leaflet-container,
+    .leaflet-control,
+    .leaflet-popup-content,
+    .leaflet-tooltip {
+      font-family: Helvetica, Helvetica Neue, Arial, sans-serif !important;
+    }
+
+    html, body { margin: 0; padding: 0; height: 100%; background:#0b1220; }
+    #map { height: 100vh; width: 100vw; }
+
+    /* STATIC TITLE BAR (stays fixed at top) */
+    .topbar{
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 99999;
+      padding: 12px 14px;
+      background: rgba(7, 12, 24, 0.78);
+      border-bottom: 1px solid rgba(255,255,255,0.14);
+      backdrop-filter: blur(10px);
+      display: flex;
+      justify-content: center;
+      pointer-events: none; /* allow map interactions */
+    }
+    .topbar-inner{
+      pointer-events: none;
+      text-align: center;
+      max-width: 980px;
+      width: calc(100% - 24px);
+    }
+    .topbar-title{
+      font-family: "Orbitron", Helvetica, Arial, sans-serif !important;
+      font-weight: 800;
+      font-size: 20px;
+      letter-spacing: 0.8px;
+      line-height: 1.1;
+      margin: 0;
+      color: #f8fafc;
+      text-shadow: 0 10px 24px rgba(0,0,0,0.55);
+    }
+    .topbar-subtitle{
+      font-family: Helvetica, Helvetica Neue, Arial, sans-serif !important;
+      font-weight: 800;
+      font-size: 13px;
+      letter-spacing: 0.2px;
+      margin-top: 6px;
+      color: #cbd5e1;
+    }
+
+    /* Give map some breathing room under the fixed topbar */
+    .leaflet-top.leaflet-right { margin-top: 56px; }
+    .leaflet-top.leaflet-left  { margin-top: 56px; }
+    .leaflet-control-zoom      { margin-top: 12px !important; }
+
+    /* Panels */
+    .panel{
+      background: rgba(15, 23, 42, 0.92);
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 18px;
+      box-shadow: 0 16px 42px rgba(0,0,0,0.45);
+      padding: 14px 14px;
+      color: #f1f5f9;
+      min-width: 390px;
+      max-width: 560px;
+      backdrop-filter: blur(8px);
+    }
+    .panel h3{ margin: 0 0 6px; font-size: 20px; font-weight: 900; letter-spacing: .2px; }
+    .panel p{ margin: 0 0 12px; font-size: 14px; line-height: 1.35; color: #cbd5e1; }
+
+    .grad{
+      height: 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.18);
+      background: linear-gradient(90deg,
+        #1d4ed8,
+        #06b6d4,
+        #22c55e,
+        #facc15,
+        #fb923c,
+        #ef4444
+      );
+      margin: 10px 0 6px;
+    }
+    .gradlabels{
+      display:flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: #a7b2c6;
+      margin-bottom: 10px;
+      font-weight: 800;
+    }
+
+    .row{ display:flex; gap:10px; margin-top: 10px; }
+    .btn{
+      flex: 1;
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 14px;
+      padding: 10px 10px;
+      background: rgba(255,255,255,0.06);
+      color: #f1f5f9;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 800;
+      transition: background .12s ease, border-color .12s ease, transform .10s ease;
+    }
+    .btn:hover{
+      background: rgba(255,255,255,0.10);
+      border-color: rgba(255,255,255,0.20);
+      transform: translateY(-1px);
+    }
+
+    /* Left controls */
+    .filter-panel{
+      min-width: 340px;
+      max-width: 380px;
+      padding: 12px 12px;
+    }
+    .filter-title{
+      font-size: 16px;
+      font-weight: 900;
+      margin: 0 0 10px;
+    }
+    .subtle{
+      margin: 0 0 10px;
+      font-size: 12px;
+      color: #a7b2c6;
+      line-height: 1.35;
+      font-weight: 700;
+    }
+
+    .select{
+      width: 100%;
+      padding: 12px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.06);
+      color: #f8fafc;
+      font-weight: 900;
+      font-size: 13px;
+      outline: none;
+      cursor: pointer;
+      appearance: none;
+    }
+
+    .chips{
+      display:flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .chip{
+      display:flex;
+      align-items:center;
+      gap: 10px;
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 999px;
+      padding: 10px 12px;
+      background: rgba(255,255,255,0.06);
+      cursor: pointer;
+      user-select: none;
+      transition: background .12s ease, border-color .12s ease, transform .10s ease;
+      font-size: 13px;
+      font-weight: 900;
+    }
+    .chip:hover{
+      background: rgba(255,255,255,0.10);
+      border-color: rgba(255,255,255,0.20);
+      transform: translateY(-1px);
+    }
+    .chip input{ width: 16px; height: 16px; accent-color: #cbd5e1; }
+    .dot{ width: 10px; height: 10px; border-radius: 999px; background: rgba(255,255,255,0.45); }
+    .dot.core{ background:#ef4444; }
+    .dot.strong{ background:#facc15; }
+    .dot.emerging{ background:#06b6d4; }
+
+    .mini-row{ display:flex; gap:10px; margin-top: 10px; }
+    .mini-btn{
+      flex: 1;
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 14px;
+      padding: 10px 10px;
+      background: rgba(255,255,255,0.06);
+      color: #f1f5f9;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 900;
+      transition: background .12s ease, border-color .12s ease, transform .10s ease;
+    }
+    .mini-btn:hover{
+      background: rgba(255,255,255,0.10);
+      border-color: rgba(255,255,255,0.20);
+      transform: translateY(-1px);
+    }
+
+    /* Tooltip: large, readable */
+    .leaflet-tooltip{
+      border: none !important;
+      background: transparent !important;
+      box-shadow: none !important;
+      padding: 0 !important;
+    }
+    .hot-tooltip{
+      background: rgba(2, 6, 23, 0.94);
+      color: #f8fafc;
+      border: 1px solid rgba(255,255,255,0.20);
+      border-radius: 18px;
+      box-shadow: 0 18px 44px rgba(0,0,0,0.55);
+      padding: 14px 14px;
+      min-width: 320px;
+    }
+    .hot-tooltip .name{
+      font-size: 18px;
+      font-weight: 900;
+      letter-spacing: .2px;
+      line-height: 1.15;
+    }
+    .hot-tooltip .meta{
+      margin-top: 8px;
+      color: #cbd5e1;
+      font-size: 14px;
+      font-weight: 800;
+      line-height: 1.35;
+    }
+    .hot-tooltip .grid{
+      margin-top: 10px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .hot-tooltip .card{
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 14px;
+      padding: 10px 10px;
+      background: rgba(255,255,255,0.05);
+    }
+    .hot-tooltip .k{
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: .4px;
+      color: #a7b2c6;
+    }
+    .hot-tooltip .v{
+      margin-top: 6px;
+      font-size: 16px;
+      font-weight: 900;
+      color: #f8fafc;
+    }
+    .hot-tooltip .badge{
+      display:inline-block;
+      margin-top: 12px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-weight: 900;
+      font-size: 13px;
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(255,255,255,0.06);
+      color: #f8fafc;
+    }
+
+    /* Emerging "throb" */
+    .pulse-wrap{ position: relative; width: 22px; height: 22px; }
+    .pulse-dot{
+      position:absolute; inset: 0; margin:auto;
+      width: 12px; height: 12px; border-radius: 999px;
+      background: #ff3b7a;
+      box-shadow: 0 0 0 4px rgba(255,59,122,0.22);
+    }
+    .pulse-ring{
+      position:absolute; inset: 0; margin:auto;
+      width: 14px; height: 14px; border-radius: 999px;
+      border: 2px solid rgba(255,59,122,0.75);
+      animation: pulse 1.25s ease-out infinite;
+    }
+    .pulse-ring:nth-child(1){ animation-delay: 0s; }
+    .pulse-ring:nth-child(2){ animation-delay: .42s; }
+    @keyframes pulse{
+      0%   { transform: scale(1); opacity: 0.85; }
+      100% { transform: scale(2.6); opacity: 0; }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Static title bar -->
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div class="topbar-title">Strategic Diaspora Intelligence Map: Telugu Global Hotspots</div>
+      <div class="topbar-subtitle">Brig (Dr) Inder Sethi, Percepta Consulting, Feb 2026</div>
+    </div>
+  </div>
+
+  <div id="map"></div>
+
+  <script>
+    // --- Map init ---
+    const map = L.map("map", { zoomControl: true }).setView([39.5, -98.35], 4);
+
+    const base = L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+      maxZoom: 19,
+      attribution: "&copy; OpenStreetMap contributors &copy; CARTO"
+    }).addTo(map);
+
+    const hillshade = L.tileLayer("https://tiles.wmflabs.org/hillshading/{z}/{x}/{y}.png", {
+      maxZoom: 17,
+      opacity: 0.26,
+      attribution: "Hillshade: WMF Labs"
+    }).addTo(map);
+
+    // Pane so hover targets always sit on top and remain hoverable
+    map.createPane("hoverPane");
+    map.getPane("hoverPane").style.zIndex = 650; // above overlays
+
+    // --- Data (USA / Canada / Europe) ---
+    const HOTSPOTS_BY_REGION = {
+      USA: [
+        { name:"Bay Area (Fremont–San Jose)", tier:"core", weight:100, population_est:"Very High", note:"Fremont + South Bay corridor (large Telugu orgs / tech).", anchors:[[37.5485,-121.9886],[37.4323,-121.8996],[37.3861,-122.0839],[37.4419,-122.1430],[37.3382,-121.8863]] },
+        { name:"Dallas–Plano–Frisco", tier:"core", weight:92, population_est:"Very High", note:"North DFW suburbs (fast-growing Telugu family clusters).", anchors:[[32.7767,-96.7970],[33.0198,-96.6989],[33.1507,-96.8236],[32.9126,-96.6389],[33.1972,-96.6153]] },
+
+        { name:"Seattle–Redmond", tier:"strong", weight:72, population_est:"High", note:"Eastside tech corridor (Redmond/Bellevue).", anchors:[[47.6730,-122.1215],[47.6101,-122.2015],[47.6062,-122.3321],[47.5301,-122.0326]] },
+        { name:"New Jersey (Edison–Plainsboro)", tier:"strong", weight:66, population_est:"High", note:"Central NJ (high Indian density).", anchors:[[40.5187,-74.4121],[40.3340,-74.5815],[40.4862,-74.4518],[40.4509,-74.5397]] },
+        { name:"Atlanta (Alpharetta–Johns Creek)", tier:"strong", weight:62, population_est:"High", note:"North Atlanta suburbs (schools + family clusters).", anchors:[[34.0754,-84.2941],[34.0289,-84.1986],[33.9790,-84.3270],[34.0500,-84.2300]] },
+        { name:"Austin–Round Rock", tier:"strong", weight:60, population_est:"High", note:"Austin metro (newer Telugu pockets).", anchors:[[30.2672,-97.7431],[30.5083,-97.6789],[30.4200,-97.8000],[30.6327,-97.6772]] },
+        { name:"NoVA (Ashburn–Herndon)", tier:"strong", weight:58, population_est:"High", note:"DC suburbs (tech + contracting).", anchors:[[39.0438,-77.4874],[38.9696,-77.3861],[38.9586,-77.3570],[39.0930,-77.5636]] },
+
+        { name:"Raleigh–Durham (Cary)", tier:"emerging", weight:40, population_est:"Medium", note:"RTP (biotech/tech; rising pockets).", anchors:[[35.7915,-78.7811],[35.7796,-78.6382],[35.9940,-78.8986],[35.8350,-78.9200]] },
+        { name:"Phoenix–Chandler", tier:"emerging", weight:36, population_est:"Medium", note:"AZ tech pockets; newer migration patterns.", anchors:[[33.4484,-112.0740],[33.3062,-111.8413],[33.4152,-111.8315],[33.3528,-111.7890]] },
+        { name:"Chicago suburbs (Naperville)", tier:"emerging", weight:34, population_est:"Medium", note:"West suburbs (steady growth).", anchors:[[41.8781,-87.6298],[41.7508,-88.1535],[41.8500,-88.3000],[41.9050,-88.1200]] },
+        { name:"Denver–Aurora", tier:"emerging", weight:32, population_est:"Medium", note:"Colorado front range (smaller but rising).", anchors:[[39.7392,-104.9903],[39.7294,-104.8319],[39.6542,-104.9186],[39.9142,-104.9800]] }
+      ],
+
+      Canada: [
+        { name:"Greater Toronto Area (Brampton–Mississauga)", tier:"core", weight:85, population_est:"Very High", note:"GTA: high Indian density; strong Telugu communities.", anchors:[[43.6532,-79.3832],[43.7315,-79.7624],[43.5890,-79.6441],[43.7764,-79.2318],[43.7166,-79.3407]] },
+        { name:"Vancouver (Surrey–Burnaby)", tier:"strong", weight:55, population_est:"High", note:"Metro Vancouver pockets (tech + families).", anchors:[[49.2827,-123.1207],[49.1044,-122.8011],[49.2488,-122.9805],[49.2609,-123.1139]] },
+        { name:"Calgary", tier:"emerging", weight:28, population_est:"Low–Medium", note:"Smaller cluster; professional migration.", anchors:[[51.0447,-114.0719],[51.0501,-114.0853],[50.9850,-114.0700]] },
+        { name:"Ottawa", tier:"emerging", weight:26, population_est:"Low–Medium", note:"Gov/tech professionals.", anchors:[[45.4215,-75.6972],[45.3483,-75.7580],[45.4500,-75.6500]] },
+        { name:"Montreal", tier:"emerging", weight:24, population_est:"Low–Medium", note:"Tech/academia pockets.", anchors:[[45.5019,-73.5674],[45.5700,-73.7000],[45.4600,-73.5600]] }
+      ],
+
+      Europe: [
+        { name:"London (Greater London)", tier:"core", weight:80, population_est:"Very High", note:"London metro (IT/finance; large Indian diaspora).", anchors:[[51.5072,-0.1276],[51.5580,-0.2817],[51.4613,-0.3037],[51.5850,-0.1100]] },
+        { name:"Dublin", tier:"strong", weight:52, population_est:"High", note:"Tech hub; rising Telugu professionals.", anchors:[[53.3498,-6.2603],[53.3500,-6.3000],[53.3200,-6.2000]] },
+        { name:"Amsterdam–Utrecht", tier:"strong", weight:48, population_est:"Medium–High", note:"NL tech corridor pockets.", anchors:[[52.3676,4.9041],[52.0907,5.1214],[52.3500,4.8000]] },
+        { name:"Berlin", tier:"emerging", weight:30, population_est:"Medium", note:"Startups + tech.", anchors:[[52.5200,13.4050],[52.5000,13.3500],[52.5400,13.4500]] },
+        { name:"Frankfurt", tier:"emerging", weight:28, population_est:"Medium", note:"Finance + corporate.", anchors:[[50.1109,8.6821],[50.1400,8.6500],[50.0900,8.7200]] },
+        { name:"Paris", tier:"emerging", weight:26, population_est:"Medium", note:"Corporate clusters; smaller but present.", anchors:[[48.8566,2.3522],[48.9000,2.3000],[48.8200,2.3800]] }
+      ]
+    };
+
+    // --- Color ramp ---
+    const stops = [
+      { t: 0.00, c: [ 29,  78, 216] },
+      { t: 0.20, c: [  6, 182, 212] },
+      { t: 0.45, c: [ 34, 197,  94] },
+      { t: 0.65, c: [250, 204,  21] },
+      { t: 0.82, c: [251, 146,  60] },
+      { t: 1.00, c: [239,  68,  68] }
+    ];
+    function lerp(a,b,t){ return a + (b-a)*t; }
+    function clamp01(x){ return Math.max(0, Math.min(1, x)); }
+    function colorAt(t){
+      t = clamp01(t);
+      for (let i=0; i<stops.length-1; i++){
+        const s0 = stops[i], s1 = stops[i+1];
+        if (t >= s0.t && t <= s1.t){
+          const k = (t - s0.t) / (s1.t - s0.t);
+          const r = Math.round(lerp(s0.c[0], s1.c[0], k));
+          const g = Math.round(lerp(s0.c[1], s1.c[1], k));
+          const b = Math.round(lerp(s0.c[2], s1.c[2], k));
+          return `rgb(${r},${g},${b})`;
+        }
+      }
+      const last = stops[stops.length-1].c;
+      return `rgb(${last[0]},${last[1]},${last[2]})`;
+    }
+
+    function centroid(pts){
+      let lat=0,lng=0;
+      for (const p of pts){ lat += p[0]; lng += p[1]; }
+      return [lat/pts.length, lng/pts.length];
+    }
+
+    function toTitleCase(s){
+      return (s||"").toLowerCase().replace(/(^|\s)\S/g, t => t.toUpperCase());
+    }
+
+    const state = {
+      region: "USA",
+      showCore: true,
+      showStrong: true,
+      showEmerging: true,
+      reliefOn: true,
+      pulseOn: true
+    };
+
+    // Tooltip HTML (large text)
+    function tooltipHtml(h, t){
+      const tierLabel = toTitleCase(h.tier);
+      const pop = h.population_est || "—";
+      const idx = Math.round(t*100);
+      return `
+        <div class="hot-tooltip">
+          <div class="name">${h.name}</div>
+          <div class="meta">${h.note}</div>
+
+          <div class="grid">
+            <div class="card">
+              <div class="k">CATEGORY</div>
+              <div class="v">${tierLabel}</div>
+            </div>
+            <div class="card">
+              <div class="k">POPULATION</div>
+              <div class="v">${pop}</div>
+            </div>
+            <div class="card">
+              <div class="k">PRESENCE INDEX</div>
+              <div class="v">${idx}</div>
+            </div>
+            <div class="card">
+              <div class="k">REGION</div>
+              <div class="v">${state.region}</div>
+            </div>
+          </div>
+
+          <div class="badge">Hover Intelligence • Telugu Diaspora</div>
+        </div>
+      `;
+    }
+
+    // --- Tier layers ---
+    const layersByTier = {
+      core:     { blobs: L.layerGroup().addTo(map), hover: L.layerGroup().addTo(map), pulse: L.layerGroup().addTo(map) },
+      strong:   { blobs: L.layerGroup().addTo(map), hover: L.layerGroup().addTo(map), pulse: L.layerGroup().addTo(map) },
+      emerging: { blobs: L.layerGroup().addTo(map), hover: L.layerGroup().addTo(map), pulse: L.layerGroup().addTo(map) }
+    };
+
+    function applyTierVisibility(){
+      const tiers = ["core","strong","emerging"];
+      tiers.forEach(t => {
+        const on =
+          (t==="core" && state.showCore) ||
+          (t==="strong" && state.showStrong) ||
+          (t==="emerging" && state.showEmerging);
+
+        const grp = layersByTier[t];
+
+        if (on){
+          if (!map.hasLayer(grp.blobs)) map.addLayer(grp.blobs);
+          if (!map.hasLayer(grp.hover)) map.addLayer(grp.hover);
+        } else {
+          if (map.hasLayer(grp.blobs)) map.removeLayer(grp.blobs);
+          if (map.hasLayer(grp.hover)) map.removeLayer(grp.hover);
+        }
+
+        if (on && state.pulseOn){
+          if (!map.hasLayer(grp.pulse)) map.addLayer(grp.pulse);
+        } else {
+          if (map.hasLayer(grp.pulse)) map.removeLayer(grp.pulse);
+        }
+      });
+    }
+
+    function clearAllTierLayers(){
+      ["core","strong","emerging"].forEach(t => {
+        layersByTier[t].blobs.clearLayers();
+        layersByTier[t].hover.clearLayers();
+        layersByTier[t].pulse.clearLayers();
+      });
+    }
+
+    // Region scaling (log normalize within current region)
+    function regionLogNorm(hotspots, w){
+      const ws = hotspots.map(x => x.weight);
+      const minW = Math.min(...ws);
+      const maxW = Math.max(...ws);
+      const a = Math.log(w - minW + 1);
+      const b = Math.log(maxW - minW + 1);
+      return b === 0 ? 1 : (a / b);
+    }
+
+    // Emerging pulse marker
+    function addPulseMarker(latlng, group){
+      const pulseIcon = L.divIcon({
+        className: "",
+        html: `
+          <div class="pulse-wrap">
+            <div class="pulse-ring"></div>
+            <div class="pulse-ring"></div>
+            <div class="pulse-dot"></div>
+          </div>
+        `,
+        iconSize: [22, 22],
+        iconAnchor: [11, 11]
+      });
+      L.marker(latlng, { icon: pulseIcon }).addTo(group);
+    }
+
+    // IMPORTANT FIX:
+    // Ensure EVERY hotspot reliably shows a tooltip by creating MULTIPLE invisible hover targets
+    // across centroid + anchors, all binding the same tooltip.
+    function addHoverTargets(h, tNorm, points){
+      const grp = layersByTier[h.tier];
+
+      // Use a slightly larger invisible radius for easy hover capture
+      const hoverRadius = 20;
+
+      points.forEach((pt) => {
+        const hover = L.circleMarker(pt, {
+          pane: "hoverPane",
+          radius: hoverRadius,
+          color: "transparent",
+          weight: 0,
+          fillColor: "transparent",
+          fillOpacity: 0,
+          interactive: true
+        }).addTo(grp.hover);
+
+        hover.bindTooltip(tooltipHtml(h, tNorm), {
+          direction: "top",
+          sticky: true,
+          opacity: 1
+        });
+      });
+    }
+
+    // Fuzzy blob drawing
+    function drawFuzzyBlob(h, regionHotspots){
+      const t = regionLogNorm(regionHotspots, h.weight);
+      const col = colorAt(t);
+
+      const coreR = 10 + t * 10;
+      const midR  = 22 + t * 18;
+      const farR  = 38 + t * 28;
+
+      const coreOp = 0.16 + t * 0.14;
+      const midOp  = 0.07 + t * 0.07;
+      const farOp  = 0.035 + t * 0.05;
+
+      const anchors = h.anchors;
+      const c = centroid(anchors);
+      const reducedAnchors = anchors.filter((_, i) => i % 2 === 0);
+
+      const farStyle = { radius: farR, color: col, weight: 0, fillColor: col, fillOpacity: farOp };
+      const midStyle = { radius: midR, color: col, weight: 0, fillColor: col, fillOpacity: midOp };
+      const coreStyle= { radius: coreR, color: col, weight: 0, fillColor: col, fillOpacity: coreOp };
+
+      const grp = layersByTier[h.tier];
+
+      // Visual blobs
+      L.circleMarker(c, farStyle).addTo(grp.blobs);
+      reducedAnchors.forEach(p => L.circleMarker(p, farStyle).addTo(grp.blobs));
+
+      L.circleMarker(c, midStyle).addTo(grp.blobs);
+      reducedAnchors.forEach(p => L.circleMarker(p, midStyle).addTo(grp.blobs));
+
+      L.circleMarker(c, coreStyle).addTo(grp.blobs);
+      reducedAnchors.forEach(p => L.circleMarker(p, coreStyle).addTo(grp.blobs));
+
+      // Hover targets on centroid + ALL anchors (so tooltip always appears anywhere you hover)
+      addHoverTargets(h, t, [c, ...anchors]);
+
+      // Pulse for emerging
+      if (h.tier === "emerging"){
+        addPulseMarker(c, grp.pulse);
+      }
+
+      return c;
+    }
+
+    function focusRegion(region){
+      const hs = HOTSPOTS_BY_REGION[region] || [];
+      if (!hs.length) return;
+
+      clearAllTierLayers();
+
+      const pts = [];
+      hs.forEach(h => pts.push(drawFuzzyBlob(h, hs)));
+
+      applyTierVisibility();
+      map.fitBounds(L.latLngBounds(pts).pad(0.45));
+    }
+
+    // Initial load: USA
+    focusRegion(state.region);
+
+    // --- Right panel (controls) ---
+    const MainPanel = L.Control.extend({
+      options: { position: "topright" },
+      onAdd: function(){
+        const div = L.DomUtil.create("div", "panel");
+        div.innerHTML = `
+          <h3>Controls</h3>
+          <p>Hover any hotspot area to see <b>Name</b>, <b>Category</b>, <b>Population</b>, and <b>Presence Index</b>.</p>
+
+          <div class="grad"></div>
+          <div class="gradlabels">
+            <span>Lower presence</span>
+            <span>Higher presence</span>
+          </div>
+
+          <div class="row">
+            <button class="btn" id="zoomRegion">Zoom Region</button>
+            <button class="btn" id="toggleRelief">Relief: ON</button>
+          </div>
+          <div class="row">
+            <button class="btn" id="togglePulse">Pulse: ON</button>
+            <button class="btn" id="rerender">Re-render</button>
+          </div>
+        `;
+
+        L.DomEvent.disableClickPropagation(div);
+        L.DomEvent.disableScrollPropagation(div);
+
+        div.querySelector("#zoomRegion").addEventListener("click", () => focusRegion(state.region));
+
+        div.querySelector("#toggleRelief").addEventListener("click", (e) => {
+          state.reliefOn = !state.reliefOn;
+          if (state.reliefOn) { if (!map.hasLayer(hillshade)) hillshade.addTo(map); }
+          else { if (map.hasLayer(hillshade)) map.removeLayer(hillshade); }
+          e.target.textContent = `Relief: ${state.reliefOn ? "ON" : "OFF"}`;
+        });
+
+        div.querySelector("#togglePulse").addEventListener("click", (e) => {
+          state.pulseOn = !state.pulseOn;
+          applyTierVisibility();
+          e.target.textContent = `Pulse: ${state.pulseOn ? "ON" : "OFF"}`;
+        });
+
+        div.querySelector("#rerender").addEventListener("click", () => focusRegion(state.region));
+
+        return div;
+      }
+    });
+    map.addControl(new MainPanel());
+
+    // --- Left panel: selector + tiers ---
+    const FilterPanel = L.Control.extend({
+      options: { position: "topleft" },
+      onAdd: function(){
+        const div = L.DomUtil.create("div", "panel filter-panel");
+
+        div.innerHTML = `
+          <div class="filter-title">Country Selector</div>
+          <div class="subtle">USA, Canada, and Europe are fully plotted. USA loads by default.</div>
+
+          <select class="select" id="regionSelect">
+            <option value="USA" selected>USA</option>
+            <option value="Canada">Canada</option>
+            <option value="Europe">Europe</option>
+          </select>
+
+          <div style="height:12px;"></div>
+
+          <div class="filter-title">Tier Filters</div>
+
+          <div class="chips">
+            <label class="chip">
+              <input type="checkbox" id="chkCore" checked />
+              <span class="dot core"></span>
+              CORE
+            </label>
+
+            <label class="chip">
+              <input type="checkbox" id="chkStrong" checked />
+              <span class="dot strong"></span>
+              STRONG
+            </label>
+
+            <label class="chip">
+              <input type="checkbox" id="chkEmerging" checked />
+              <span class="dot emerging"></span>
+              EMERGING
+            </label>
+          </div>
+
+          <div class="mini-row">
+            <button class="mini-btn" id="onlyCore">Only Core</button>
+            <button class="mini-btn" id="onlyStrong">Only Strong</button>
+          </div>
+          <div class="mini-row">
+            <button class="mini-btn" id="onlyEmerging">Only Emerging</button>
+            <button class="mini-btn" id="showAll">Show All</button>
+          </div>
+        `;
+
+        L.DomEvent.disableClickPropagation(div);
+        L.DomEvent.disableScrollPropagation(div);
+
+        // Region selector
+        const regionSelect = div.querySelector("#regionSelect");
+        regionSelect.addEventListener("change", () => {
+          state.region = regionSelect.value;
+          focusRegion(state.region);
+        });
+
+        // Tier checkboxes
+        const chkCore = div.querySelector("#chkCore");
+        const chkStrong = div.querySelector("#chkStrong");
+        const chkEmerging = div.querySelector("#chkEmerging");
+
+        function syncStateFromChecks(){
+          state.showCore = chkCore.checked;
+          state.showStrong = chkStrong.checked;
+          state.showEmerging = chkEmerging.checked;
+          applyTierVisibility();
+        }
+
+        chkCore.addEventListener("change", syncStateFromChecks);
+        chkStrong.addEventListener("change", syncStateFromChecks);
+        chkEmerging.addEventListener("change", syncStateFromChecks);
+
+        function setOnly(tier){
+          state.showCore = (tier==="core");
+          state.showStrong = (tier==="strong");
+          state.showEmerging = (tier==="emerging");
+
+          chkCore.checked = state.showCore;
+          chkStrong.checked = state.showStrong;
+          chkEmerging.checked = state.showEmerging;
+
+          applyTierVisibility();
+        }
+
+        div.querySelector("#onlyCore").addEventListener("click", () => setOnly("core"));
+        div.querySelector("#onlyStrong").addEventListener("click", () => setOnly("strong"));
+        div.querySelector("#onlyEmerging").addEventListener("click", () => setOnly("emerging"));
+
+        div.querySelector("#showAll").addEventListener("click", () => {
+          state.showCore = true; state.showStrong = true; state.showEmerging = true;
+          chkCore.checked = true; chkStrong.checked = true; chkEmerging.checked = true;
+          applyTierVisibility();
+        });
+
+        return div;
+      }
+    });
+    map.addControl(new FilterPanel());
+  </script>
+</body>
+</html>
