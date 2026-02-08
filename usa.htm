@@ -1,0 +1,568 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Telugu Hotspots — USA (Fuzzy Heat Blobs • Tier Filters)</title>
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    /* Helvetica only */
+    html, body, #map,
+    .leaflet-container,
+    .leaflet-control,
+    .leaflet-popup-content,
+    .leaflet-tooltip {
+      font-family: Helvetica, Helvetica Neue, Arial, sans-serif !important;
+    }
+
+    html, body { margin: 0; padding: 0; height: 100%; background:#0b1220; }
+    #map { height: 100vh; width: 100vw; }
+
+    /* Panels */
+    .panel{
+      background: rgba(15, 23, 42, 0.92);
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 18px;
+      box-shadow: 0 16px 42px rgba(0,0,0,0.45);
+      padding: 14px 14px;
+      color: #f1f5f9;
+      min-width: 390px;
+      max-width: 460px;
+      backdrop-filter: blur(8px);
+    }
+    .panel h3{ margin: 0 0 6px; font-size: 20px; font-weight: 800; letter-spacing: .2px; }
+    .panel p{ margin: 0 0 12px; font-size: 14px; line-height: 1.35; color: #cbd5e1; }
+
+    .grad{
+      height: 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.18);
+      background: linear-gradient(90deg,
+        #1d4ed8,
+        #06b6d4,
+        #22c55e,
+        #facc15,
+        #fb923c,
+        #ef4444
+      );
+      margin: 10px 0 6px;
+    }
+    .gradlabels{
+      display:flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: #a7b2c6;
+      margin-bottom: 10px;
+    }
+
+    .row{ display:flex; gap:10px; margin-top: 10px; }
+    .btn{
+      flex: 1;
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 14px;
+      padding: 10px 10px;
+      background: rgba(255,255,255,0.06);
+      color: #f1f5f9;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 700;
+      transition: background .12s ease, border-color .12s ease, transform .10s ease;
+    }
+    .btn:hover{
+      background: rgba(255,255,255,0.10);
+      border-color: rgba(255,255,255,0.20);
+      transform: translateY(-1px);
+    }
+
+    /* NEW: Tier filter panel styles */
+    .filter-panel{
+      min-width: 320px;
+      max-width: 360px;
+      padding: 12px 12px;
+    }
+    .filter-title{
+      font-size: 16px;
+      font-weight: 800;
+      margin: 0 0 10px;
+    }
+    .chips{
+      display:flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .chip{
+      display:flex;
+      align-items:center;
+      gap: 10px;
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 999px;
+      padding: 10px 12px;
+      background: rgba(255,255,255,0.06);
+      cursor: pointer;
+      user-select: none;
+      transition: background .12s ease, border-color .12s ease, transform .10s ease;
+      font-size: 13px;
+      font-weight: 800;
+    }
+    .chip:hover{
+      background: rgba(255,255,255,0.10);
+      border-color: rgba(255,255,255,0.20);
+      transform: translateY(-1px);
+    }
+    .chip input{
+      width: 16px;
+      height: 16px;
+      accent-color: #cbd5e1;
+    }
+    .dot{
+      width: 10px; height: 10px; border-radius: 999px;
+      background: rgba(255,255,255,0.45);
+    }
+    .dot.core{ background:#ef4444; }
+    .dot.strong{ background:#facc15; }
+    .dot.emerging{ background:#06b6d4; }
+
+    .mini-row{
+      display:flex;
+      gap:10px;
+      margin-top: 10px;
+    }
+    .mini-btn{
+      flex: 1;
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 14px;
+      padding: 10px 10px;
+      background: rgba(255,255,255,0.06);
+      color: #f1f5f9;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 800;
+      transition: background .12s ease, border-color .12s ease, transform .10s ease;
+    }
+    .mini-btn:hover{
+      background: rgba(255,255,255,0.10);
+      border-color: rgba(255,255,255,0.20);
+      transform: translateY(-1px);
+    }
+
+    /* Hover tooltip styling */
+    .hot-tooltip{
+      background: rgba(2, 6, 23, 0.92);
+      color: #f8fafc;
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 14px;
+      box-shadow: 0 14px 34px rgba(0,0,0,0.5);
+      padding: 10px 12px;
+      font-size: 13px;
+      line-height: 1.25;
+    }
+    .hot-tooltip b{ font-size: 14px; }
+    .hot-tooltip .meta{ color: #cbd5e1; margin-top: 4px; }
+    .hot-tooltip .badge{
+      display:inline-block;
+      margin-top: 8px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-weight: 800;
+      font-size: 12px;
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(255,255,255,0.06);
+      color: #f8fafc;
+    }
+
+    /* Emerging "throb" markers */
+    .pulse-wrap{ position: relative; width: 22px; height: 22px; }
+    .pulse-dot{
+      position:absolute; inset: 0; margin:auto;
+      width: 12px; height: 12px; border-radius: 999px;
+      background: #ff3b7a;
+      box-shadow: 0 0 0 4px rgba(255,59,122,0.22);
+    }
+    .pulse-ring{
+      position:absolute; inset: 0; margin:auto;
+      width: 14px; height: 14px; border-radius: 999px;
+      border: 2px solid rgba(255,59,122,0.75);
+      animation: pulse 1.25s ease-out infinite;
+    }
+    .pulse-ring:nth-child(1){ animation-delay: 0s; }
+    .pulse-ring:nth-child(2){ animation-delay: .42s; }
+    @keyframes pulse{
+      0%   { transform: scale(1); opacity: 0.85; }
+      100% { transform: scale(2.6); opacity: 0; }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="map"></div>
+
+  <script>
+    // --- Map init ---
+    const map = L.map("map", { zoomControl: true }).setView([39.5, -98.35], 4);
+
+    const base = L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+      maxZoom: 19,
+      attribution: "&copy; OpenStreetMap contributors &copy; CARTO"
+    }).addTo(map);
+
+    const hillshade = L.tileLayer("https://tiles.wmflabs.org/hillshading/{z}/{x}/{y}.png", {
+      maxZoom: 17,
+      opacity: 0.26,
+      attribution: "Hillshade: WMF Labs"
+    }).addTo(map);
+
+    // --- Hotspots ---
+    const HOTSPOTS = [
+      { name:"Bay Area (Fremont–San Jose)", tier:"core", weight:100, note:"Fremont + South Bay corridor (large Telugu orgs / tech).", anchors:[[37.5485,-121.9886],[37.4323,-121.8996],[37.3861,-122.0839],[37.4419,-122.1430],[37.3382,-121.8863]] },
+      { name:"Dallas–Plano–Frisco", tier:"core", weight:92, note:"North DFW suburbs (fast-growing Telugu family clusters).", anchors:[[32.7767,-96.7970],[33.0198,-96.6989],[33.1507,-96.8236],[32.9126,-96.6389],[33.1972,-96.6153]] },
+
+      { name:"Seattle–Redmond", tier:"strong", weight:72, note:"Eastside tech corridor (Redmond/Bellevue).", anchors:[[47.6730,-122.1215],[47.6101,-122.2015],[47.6062,-122.3321],[47.5301,-122.0326]] },
+      { name:"Austin–Round Rock", tier:"strong", weight:60, note:"Austin metro (newer Telugu pockets).", anchors:[[30.2672,-97.7431],[30.5083,-97.6789],[30.4200,-97.8000],[30.6327,-97.6772]] },
+      { name:"New Jersey (Edison–Plainsboro)", tier:"strong", weight:66, note:"Central NJ (high Indian/Telugu density).", anchors:[[40.5187,-74.4121],[40.3340,-74.5815],[40.4862,-74.4518],[40.4509,-74.5397]] },
+      { name:"NoVA (Ashburn–Herndon)", tier:"strong", weight:58, note:"DC suburbs (tech + contracting).", anchors:[[39.0438,-77.4874],[38.9696,-77.3861],[38.9586,-77.3570],[39.0930,-77.5636]] },
+      { name:"Atlanta (Alpharetta–Johns Creek)", tier:"strong", weight:62, note:"North Atlanta suburbs (schools + family clusters).", anchors:[[34.0754,-84.2941],[34.0289,-84.1986],[33.9790,-84.3270],[34.0500,-84.2300]] },
+
+      { name:"Raleigh–Durham (Cary)", tier:"emerging", weight:40, note:"RTP (biotech/tech; rising Telugu pockets).", anchors:[[35.7915,-78.7811],[35.7796,-78.6382],[35.9940,-78.8986],[35.8350,-78.9200]] },
+      { name:"Phoenix–Chandler", tier:"emerging", weight:36, note:"AZ tech pockets; newer migration patterns.", anchors:[[33.4484,-112.0740],[33.3062,-111.8413],[33.4152,-111.8315],[33.3528,-111.7890]] },
+      { name:"Denver–Aurora", tier:"emerging", weight:32, note:"Colorado front range (smaller but rising).", anchors:[[39.7392,-104.9903],[39.7294,-104.8319],[39.6542,-104.9186],[39.9142,-104.9800]] },
+      { name:"Chicago suburbs (Naperville)", tier:"emerging", weight:34, note:"West suburbs (steady Indian growth).", anchors:[[41.8781,-87.6298],[41.7508,-88.1535],[41.8500,-88.3000],[41.9050,-88.1200]] }
+    ];
+
+    // --- Comparative scaling (log normalized) ---
+    const weights = HOTSPOTS.map(h => h.weight);
+    const minW = Math.min(...weights);
+    const maxW = Math.max(...weights);
+
+    function logNorm(w){
+      const a = Math.log(w - minW + 1);
+      const b = Math.log(maxW - minW + 1);
+      return b === 0 ? 1 : (a / b);
+    }
+
+    // RGB gradient stops: blue → cyan → green → yellow → orange → red
+    const stops = [
+      { t: 0.00, c: [ 29,  78, 216] },
+      { t: 0.20, c: [  6, 182, 212] },
+      { t: 0.45, c: [ 34, 197,  94] },
+      { t: 0.65, c: [250, 204,  21] },
+      { t: 0.82, c: [251, 146,  60] },
+      { t: 1.00, c: [239,  68,  68] }
+    ];
+    function lerp(a,b,t){ return a + (b-a)*t; }
+    function clamp01(x){ return Math.max(0, Math.min(1, x)); }
+    function colorAt(t){
+      t = clamp01(t);
+      for (let i=0; i<stops.length-1; i++){
+        const s0 = stops[i], s1 = stops[i+1];
+        if (t >= s0.t && t <= s1.t){
+          const k = (t - s0.t) / (s1.t - s0.t);
+          const r = Math.round(lerp(s0.c[0], s1.c[0], k));
+          const g = Math.round(lerp(s0.c[1], s1.c[1], k));
+          const b = Math.round(lerp(s0.c[2], s1.c[2], k));
+          return `rgb(${r},${g},${b})`;
+        }
+      }
+      const last = stops[stops.length-1].c;
+      return `rgb(${last[0]},${last[1]},${last[2]})`;
+    }
+
+    function centroid(pts){
+      let lat=0,lng=0;
+      for (const p of pts){ lat += p[0]; lng += p[1]; }
+      return [lat/pts.length, lng/pts.length];
+    }
+
+    function tooltipHtml(h, t){
+      return `
+        <div class="hot-tooltip">
+          <b>${h.name}</b>
+          <div class="meta">${h.note}</div>
+          <div class="badge">Presence Index: ${Math.round(t*100)} • ${h.tier.toUpperCase()}</div>
+        </div>
+      `;
+    }
+
+    // --- Layers by tier (NEW) ---
+    const layersByTier = {
+      core:     { blobs: L.layerGroup().addTo(map), hover: L.layerGroup().addTo(map), pulse: L.layerGroup().addTo(map) },
+      strong:   { blobs: L.layerGroup().addTo(map), hover: L.layerGroup().addTo(map), pulse: L.layerGroup().addTo(map) },
+      emerging: { blobs: L.layerGroup().addTo(map), hover: L.layerGroup().addTo(map), pulse: L.layerGroup().addTo(map) }
+    };
+
+    // Global toggles
+    const state = {
+      showCore: true,
+      showStrong: true,
+      showEmerging: true,
+      reliefOn: true,
+      pulseOn: true
+    };
+
+    function applyTierVisibility(){
+      const tiers = ["core","strong","emerging"];
+      tiers.forEach(t => {
+        const on =
+          (t==="core" && state.showCore) ||
+          (t==="strong" && state.showStrong) ||
+          (t==="emerging" && state.showEmerging);
+
+        const grp = layersByTier[t];
+
+        // blobs + hover always together
+        if (on){
+          if (!map.hasLayer(grp.blobs)) map.addLayer(grp.blobs);
+          if (!map.hasLayer(grp.hover)) map.addLayer(grp.hover);
+        } else {
+          if (map.hasLayer(grp.blobs)) map.removeLayer(grp.blobs);
+          if (map.hasLayer(grp.hover)) map.removeLayer(grp.hover);
+        }
+
+        // pulse depends on both tier visibility + pulseOn
+        if (on && state.pulseOn){
+          if (!map.hasLayer(grp.pulse)) map.addLayer(grp.pulse);
+        } else {
+          if (map.hasLayer(grp.pulse)) map.removeLayer(grp.pulse);
+        }
+      });
+    }
+
+    // Fuzzy blob drawing tuned smaller (same as your “perfect” version)
+    function drawFuzzyBlob(h){
+      const t = logNorm(h.weight);
+      const col = colorAt(t);
+
+      const coreR = 10 + t * 10;   // 10..20
+      const midR  = 22 + t * 18;   // 22..40
+      const farR  = 38 + t * 28;   // 38..66
+
+      const coreOp = 0.16 + t * 0.14; // 0.16..0.30
+      const midOp  = 0.07 + t * 0.07; // 0.07..0.14
+      const farOp  = 0.035 + t * 0.05;// 0.035..0.085
+
+      const anchors = h.anchors;
+      const c = centroid(anchors);
+
+      const farStyle = { radius: farR, color: col, weight: 0, fillColor: col, fillOpacity: farOp };
+      const midStyle = { radius: midR, color: col, weight: 0, fillColor: col, fillOpacity: midOp };
+      const coreStyle= { radius: coreR, color: col, weight: 0, fillColor: col, fillOpacity: coreOp };
+
+      const reducedAnchors = anchors.filter((_, i) => i % 2 === 0);
+
+      const grp = layersByTier[h.tier];
+
+      // far blur
+      L.circleMarker(c, farStyle).addTo(grp.blobs);
+      reducedAnchors.forEach(p => L.circleMarker(p, farStyle).addTo(grp.blobs));
+
+      // mid blur
+      L.circleMarker(c, midStyle).addTo(grp.blobs);
+      reducedAnchors.forEach(p => L.circleMarker(p, midStyle).addTo(grp.blobs));
+
+      // core
+      L.circleMarker(c, coreStyle).addTo(grp.blobs);
+      reducedAnchors.forEach(p => L.circleMarker(p, coreStyle).addTo(grp.blobs));
+
+      // Invisible hover target
+      const hover = L.circleMarker(c, {
+        radius: 10,
+        color: "transparent",
+        weight: 0,
+        fillColor: "transparent",
+        fillOpacity: 0
+      }).addTo(grp.hover);
+
+      hover.bindTooltip(tooltipHtml(h, t), {
+        direction: "top",
+        sticky: true,
+        opacity: 1,
+        className: ""
+      });
+
+      // Emerging: pulse marker (kept in tier pulse layer)
+      if (h.tier === "emerging"){
+        const pulseIcon = L.divIcon({
+          className: "",
+          html: `
+            <div class="pulse-wrap">
+              <div class="pulse-ring"></div>
+              <div class="pulse-ring"></div>
+              <div class="pulse-dot"></div>
+            </div>
+          `,
+          iconSize: [22, 22],
+          iconAnchor: [11, 11]
+        });
+        L.marker(c, { icon: pulseIcon }).addTo(grp.pulse);
+      }
+
+      return c;
+    }
+
+    function clearAllTierLayers(){
+      ["core","strong","emerging"].forEach(t => {
+        layersByTier[t].blobs.clearLayers();
+        layersByTier[t].hover.clearLayers();
+        layersByTier[t].pulse.clearLayers();
+      });
+    }
+
+    function render(){
+      clearAllTierLayers();
+
+      const pts = [];
+      HOTSPOTS.forEach(h => pts.push(drawFuzzyBlob(h)));
+
+      applyTierVisibility();
+      map.fitBounds(L.latLngBounds(pts).pad(0.40));
+    }
+
+    render();
+
+    // --- Primary panel (existing) ---
+    const MainPanel = L.Control.extend({
+      options: { position: "topright" },
+      onAdd: function(){
+        const div = L.DomUtil.create("div", "panel");
+        div.innerHTML = `
+          <h3>Telugu Hotspots — USA</h3>
+          <p>Fuzzy “presence blobs” with blurred edges. Hover to reveal details.</p>
+
+          <div class="grad"></div>
+          <div class="gradlabels">
+            <span>Lower presence</span>
+            <span>Higher presence</span>
+          </div>
+
+          <div class="row">
+            <button class="btn" id="zoomAll">Zoom All</button>
+            <button class="btn" id="toggleRelief">Relief: ON</button>
+          </div>
+          <div class="row">
+            <button class="btn" id="togglePulse">Pulse: ON</button>
+            <button class="btn" id="rerender">Re-render</button>
+          </div>
+        `;
+
+        L.DomEvent.disableClickPropagation(div);
+        L.DomEvent.disableScrollPropagation(div);
+
+        div.querySelector("#zoomAll").addEventListener("click", () => render());
+
+        div.querySelector("#toggleRelief").addEventListener("click", (e) => {
+          state.reliefOn = !state.reliefOn;
+          if (state.reliefOn) { if (!map.hasLayer(hillshade)) hillshade.addTo(map); }
+          else { if (map.hasLayer(hillshade)) map.removeLayer(hillshade); }
+          e.target.textContent = `Relief: ${state.reliefOn ? "ON" : "OFF"}`;
+        });
+
+        div.querySelector("#togglePulse").addEventListener("click", (e) => {
+          state.pulseOn = !state.pulseOn;
+          applyTierVisibility();
+          e.target.textContent = `Pulse: ${state.pulseOn ? "ON" : "OFF"}`;
+        });
+
+        div.querySelector("#rerender").addEventListener("click", () => render());
+
+        return div;
+      }
+    });
+
+    map.addControl(new MainPanel());
+
+    // --- NEW: Tier filter panel (separate panel) ---
+    const TierPanel = L.Control.extend({
+      options: { position: "topleft" },
+      onAdd: function(){
+        const div = L.DomUtil.create("div", "panel filter-panel");
+
+        div.innerHTML = `
+          <div class="filter-title">Filter Hotspots</div>
+
+          <div class="chips">
+            <label class="chip">
+              <input type="checkbox" id="chkCore" checked />
+              <span class="dot core"></span>
+              CORE
+            </label>
+
+            <label class="chip">
+              <input type="checkbox" id="chkStrong" checked />
+              <span class="dot strong"></span>
+              STRONG
+            </label>
+
+            <label class="chip">
+              <input type="checkbox" id="chkEmerging" checked />
+              <span class="dot emerging"></span>
+              EMERGING
+            </label>
+          </div>
+
+          <div class="mini-row">
+            <button class="mini-btn" id="onlyCore">Only Core</button>
+            <button class="mini-btn" id="onlyStrong">Only Strong</button>
+          </div>
+          <div class="mini-row">
+            <button class="mini-btn" id="onlyEmerging">Only Emerging</button>
+            <button class="mini-btn" id="showAll">Show All</button>
+          </div>
+        `;
+
+        L.DomEvent.disableClickPropagation(div);
+        L.DomEvent.disableScrollPropagation(div);
+
+        const chkCore = div.querySelector("#chkCore");
+        const chkStrong = div.querySelector("#chkStrong");
+        const chkEmerging = div.querySelector("#chkEmerging");
+
+        function syncStateFromChecks(){
+          state.showCore = chkCore.checked;
+          state.showStrong = chkStrong.checked;
+          state.showEmerging = chkEmerging.checked;
+          applyTierVisibility();
+        }
+
+        chkCore.addEventListener("change", syncStateFromChecks);
+        chkStrong.addEventListener("change", syncStateFromChecks);
+        chkEmerging.addEventListener("change", syncStateFromChecks);
+
+        function setOnly(tier){
+          state.showCore = (tier==="core");
+          state.showStrong = (tier==="strong");
+          state.showEmerging = (tier==="emerging");
+
+          chkCore.checked = state.showCore;
+          chkStrong.checked = state.showStrong;
+          chkEmerging.checked = state.showEmerging;
+
+          applyTierVisibility();
+        }
+
+        div.querySelector("#onlyCore").addEventListener("click", () => setOnly("core"));
+        div.querySelector("#onlyStrong").addEventListener("click", () => setOnly("strong"));
+        div.querySelector("#onlyEmerging").addEventListener("click", () => setOnly("emerging"));
+
+        div.querySelector("#showAll").addEventListener("click", () => {
+          state.showCore = true;
+          state.showStrong = true;
+          state.showEmerging = true;
+
+          chkCore.checked = true;
+          chkStrong.checked = true;
+          chkEmerging.checked = true;
+
+          applyTierVisibility();
+        });
+
+        return div;
+      }
+    });
+
+    map.addControl(new TierPanel());
+  </script>
+</body>
+</html>
